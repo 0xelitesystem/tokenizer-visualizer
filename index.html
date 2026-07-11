@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tokenizer Visualizer</title>
+<meta name="description" content="Paste text and see approximate token boundaries with colored highlighting, a token count, and a character count. Runs entirely in your browser.">
+<link rel="canonical" href="https://0xelitesystem.github.io/tokenizer-visualizer/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tokenizer Visualizer">
+<meta property="og:description" content="Paste text and see approximate token boundaries with colored highlighting, a token count, and a character count. Runs entirely in your browser.">
+<meta property="og:url" content="https://0xelitesystem.github.io/tokenizer-visualizer/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Tokenizer Visualizer",
+  "description": "Paste text and see approximate token boundaries with colored highlighting, a token count, and a character count. Runs entirely in your browser.",
+  "url": "https://0xelitesystem.github.io/tokenizer-visualizer/",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (browser)",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "0xelitesystem",
+    "url": "https://elitesystem.ai"
+  }
+}
+</script>
+<style>
+:root {
+  --bg: #fafaf6;
+  --surface: #ffffff;
+  --ink: #0a1d1e;
+  --ink-soft: #2c4a4c;
+  --rule: #c8d4d3;
+  --teal: #0f5c60;
+  --teal-deep: #0a4548;
+  --gold: #b07d2a;
+  --gold-deep: #8a611f;
+  --ok: #1a5c2e;
+  --warn: #8a5a00;
+  --err: #8b1a1a;
+  --code-bg: #f0ebe1;
+  --tok-a: rgba(176, 61, 143, 0.22);
+  --tok-b: rgba(38, 96, 168, 0.22);
+  --tok-c: rgba(58, 107, 31, 0.22);
+  --tok-d: rgba(176, 125, 42, 0.24);
+}
+[data-theme="dark"] {
+  --bg: #0c1c1d;
+  --surface: #14292a;
+  --ink: #e8ebe6;
+  --ink-soft: #b0c0bd;
+  --rule: #2a4042;
+  --teal: #4ab4ba;
+  --teal-deep: #6dc8ce;
+  --gold: #d4a155;
+  --gold-deep: #e6b876;
+  --ok: #6dd380;
+  --warn: #d4a155;
+  --err: #e88080;
+  --code-bg: #0a1718;
+  --tok-a: rgba(217, 122, 184, 0.28);
+  --tok-b: rgba(109, 168, 224, 0.28);
+  --tok-c: rgba(142, 200, 112, 0.28);
+  --tok-d: rgba(212, 161, 85, 0.30);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  line-height: 1.55;
+}
+.wrap { max-width: 1100px; margin: 0 auto; }
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 2px solid var(--teal);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--teal);
+}
+.tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--gold-deep);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+[data-theme="dark"] .tag { color: var(--gold); }
+.theme-btn {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.theme-btn:hover { border-color: var(--teal); color: var(--teal); }
+.lede {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin-bottom: 1.75rem;
+  max-width: 70ch;
+}
+.note {
+  font-size: 0.85rem;
+  color: var(--gold-deep);
+  background: var(--code-bg);
+  border-left: 3px solid var(--gold);
+  padding: 0.65rem 0.85rem;
+  border-radius: 2px;
+  margin-bottom: 1.75rem;
+  max-width: 80ch;
+}
+[data-theme="dark"] .note { color: var(--gold); }
+.input-box {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+  border-radius: 3px;
+}
+label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+textarea {
+  width: 100%;
+  min-height: 140px;
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 0.85rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  resize: vertical;
+  border-radius: 2px;
+}
+textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+.input-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+button {
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 2px;
+}
+button:hover { border-color: var(--teal); }
+button.primary {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--surface);
+  font-weight: 600;
+}
+[data-theme="dark"] button.primary { color: var(--bg) !important; }
+button.primary:hover { background: var(--teal-deep); border-color: var(--teal-deep); }
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.85rem 1.1rem;
+  min-width: 8rem;
+}
+.stat-num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--teal);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-top: 0.15rem;
+}
+.section {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-radius: 3px;
+}
+.section-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.85rem;
+}
+.token-view {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 2.1;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.tok {
+  border-radius: 2px;
+  padding: 0.05rem 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.tok.c0 { background: var(--tok-a); }
+.tok.c1 { background: var(--tok-b); }
+.tok.c2 { background: var(--tok-c); }
+.tok.c3 { background: var(--tok-d); }
+.tok.ws { outline: 1px dotted var(--rule); }
+.empty-hint { color: var(--ink-soft); font-style: italic; font-size: 0.9rem; }
+.error-msg {
+  color: var(--err);
+  font-size: 0.85rem;
+  padding: 0.65rem;
+  background: var(--code-bg);
+  border-left: 3px solid var(--err);
+  border-radius: 2px;
+  margin-bottom: 1.25rem;
+}
+footer {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+}
+footer a { color: var(--teal); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+.privacy-note {
+  font-size: 0.78rem;
+  color: var(--gold-deep);
+  margin-top: 0.5rem;
+}
+[data-theme="dark"] .privacy-note { color: var(--gold); }
+@media (max-width: 640px) {
+  body { padding: 1rem 0.75rem; }
+  h1 { font-size: 1.4rem; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Tokenizer Visualizer</h1>
+    <div class="tag">Approximate token boundaries in your browser</div>
+  </div>
+  <button class="theme-btn" id="theme-toggle" type="button">Dark</button>
+</header>
+
+<p class="lede">Paste any text to see where a rough token split falls, color-coded token by token, with a live token count and character count. Nothing leaves this page.</p>
+
+<div class="note">Heads up: this is an <strong>approximation</strong>, not any specific model's exact tokenizer. It uses a GPT-style regular expression that splits on word boundaries, contractions, numbers, punctuation, and runs of whitespace. Real tokenizers (BPE, SentencePiece, tiktoken, and so on) merge and split sub-words differently, so treat the count as a ballpark and not a billing figure.</div>
+
+<div class="input-box">
+  <label for="text-input">Text</label>
+  <textarea id="text-input" placeholder="Paste or type text here to see approximate tokens." spellcheck="false"></textarea>
+  <div class="input-row">
+    <button class="primary" id="sample-btn" type="button">Load sample</button>
+    <button id="clear-btn" type="button">Clear</button>
+  </div>
+  <div class="privacy-note">All tokenizing happens locally. Your text is never sent to any server.</div>
+</div>
+
+<div id="error-box"></div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num" id="token-count">0</div><div class="stat-label">Approx. tokens</div></div>
+  <div class="stat"><div class="stat-num" id="char-count">0</div><div class="stat-label">Characters</div></div>
+  <div class="stat"><div class="stat-num" id="ratio">0</div><div class="stat-label">Chars / token</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Token boundaries</div>
+  <div class="token-view" id="token-view"><span class="empty-hint">Type above to see tokens.</span></div>
+</div>
+
+<footer>
+  <div>Tokenizer Visualizer. Open source, MIT licensed. <a href="https://github.com/0xelitesystem/tokenizer-visualizer" target="_blank" rel="noopener">View source</a>.</div>
+  <div>Approximate, heuristic tokenizer.</div>
+</footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// Theme toggle
+const themeBtn = $("theme-toggle");
+function setTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  themeBtn.textContent = t === "dark" ? "Light" : "Dark";
+}
+themeBtn.addEventListener("click", () => {
+  const cur = document.documentElement.getAttribute("data-theme") || "light";
+  setTheme(cur === "dark" ? "light" : "dark");
+});
+// Respect prefers-color-scheme on first load
+setTheme(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// GPT-style approximate tokenizer regex.
+// Order matters: contractions, then letters, then numbers, then a leading-space
+// symbol run, then whitespace runs. The leading optional space mimics how
+// byte-pair tokenizers attach a preceding space to the following token.
+const TOKEN_RE = /'(?:[sdmt]|ll|ve|re)|[ ]?[\p{L}]+|[ ]?[\p{N}]+|[ ]?[^\s\p{L}\p{N}]+|\s+/gu;
+
+function tokenize(text) {
+  const tokens = [];
+  if (!text) return tokens;
+  // Guard against zero-length matches: the global regex with a non-empty
+  // pattern below always advances, but we defensively check lastIndex.
+  let m;
+  let guard = 0;
+  TOKEN_RE.lastIndex = 0;
+  while ((m = TOKEN_RE.exec(text)) !== null) {
+    if (m[0].length === 0) {
+      TOKEN_RE.lastIndex++;
+      if (TOKEN_RE.lastIndex > text.length) break;
+      continue;
+    }
+    tokens.push(m[0]);
+    guard++;
+    if (guard > 5000000) break; // hard ceiling, extreme inputs
+  }
+  return tokens;
+}
+
+function render() {
+  $("error-box").innerHTML = "";
+  const text = $("text-input").value;
+  const charCount = [...text].length; // code points, not UTF-16 units
+
+  let tokens;
+  try {
+    tokens = tokenize(text);
+  } catch (e) {
+    $("error-box").innerHTML = `<div class="error-msg">Could not tokenize this input: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+
+  $("token-count").textContent = tokens.length.toLocaleString();
+  $("char-count").textContent = charCount.toLocaleString();
+  $("ratio").textContent = tokens.length ? (charCount / tokens.length).toFixed(2) : "0";
+
+  const view = $("token-view");
+  if (tokens.length === 0) {
+    view.innerHTML = `<span class="empty-hint">Type above to see tokens.</span>`;
+    return;
+  }
+
+  let html = "";
+  let ci = 0;
+  for (const t of tokens) {
+    const isWs = /^\s+$/.test(t);
+    // Render whitespace tokens visibly: keep the actual whitespace so wrapping
+    // stays natural, but mark them with a dotted outline.
+    const cls = "tok c" + (ci % 4) + (isWs ? " ws" : "");
+    html += `<span class="${cls}" title="token ${ci + 1}">${escapeHtml(t)}</span>`;
+    ci++;
+  }
+  view.innerHTML = html;
+}
+
+$("text-input").addEventListener("input", render);
+
+$("sample-btn").addEventListener("click", () => {
+  $("text-input").value = "The quick brown fox jumps over 12 lazy dogs. It's 2026, and tokenization isn't always intuitive: sub-words, numbers like 3.14159, and emoji \u{1F680} all split differently!";
+  render();
+});
+
+$("clear-btn").addEventListener("click", () => {
+  $("text-input").value = "";
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
